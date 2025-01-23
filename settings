@@ -1,0 +1,11 @@
+# Woocommerce API
+URL=https://drohnen-design.de
+CONSUMER_KEY=ck_0d79d80a9f02cf7ced6f10b26f4fc7f3ba01c450
+CONSUMER_SECRET=cs_4062fc99447ac6e41e4549e26ec09e33492c4207
+
+# Label Settings
+SENDER_NAME=Drohnen-Design
+SENDER_STREET=Herrenstraße 14
+SENDER_POSTALCODE=21698
+SENDER_CITY=Harsefeld
+SENDER_COUNTRY=Deutschland
