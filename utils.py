@@ -88,7 +88,7 @@ def add_label_to_image(input_file: str, output_file: str, order: dict, label_set
     label_image = Image.new("RGBA", (300, 300), (255, 255, 255, 0))
     draw = ImageDraw.Draw(label_image)
 
-    font_path = "Roboto.ttf"
+    font_path = "font/roboto.ttf"
     font_size = 8
     font = ImageFont.truetype(font_path, font_size)
     
@@ -152,6 +152,6 @@ def create_pdf_with_svg_and_png(png_path, svg_path, output_pdf_path):
 def start_printing(order: dict, label_settings: dict) -> None:
     for item in order['line_items']:
         add_label_to_image(item['file_path'], item['file_path'].replace('stage-1.png', 'skin.png'), order, label_settings)
-        create_pdf_with_svg_and_png(item['file_path'].replace('stage-1.png', 'skin.png'), 'cut.svg', item['file_path'].replace('stage-1.png', 'skin.pdf'))
+        create_pdf_with_svg_and_png(item['file_path'].replace('stage-1.png', 'skin.png'), 'cut/cut.svg', item['file_path'].replace('stage-1.png', 'skin.pdf'))
         
     # set_order_completed(order)

@@ -1,0 +1,6 @@
+Pillow
+pycountry
+cairosvg
+PyMuPDF
+python-dotenv
+woocommerce
