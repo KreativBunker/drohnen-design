@@ -2,7 +2,6 @@ from dotenv import load_dotenv
 from woocommerce import API
 from utils import *
 
-import time
 import os
 
 
