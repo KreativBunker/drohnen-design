@@ -1,4 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
+from models import AppConfig
 
 import pycountry
 import cairosvg
@@ -118,19 +119,19 @@ def add_label_to_image(input_file: str, output_file: str, order: dict, label_set
     new_image.save(output_file)
 
 
-def order_check(woocommerce_api: str, input_folder: str, label_settings: str) -> None:
-    for order in woocommerce_api.get('orders').json():
+def order_check(app_config: AppConfig) -> None:
+    for order in app_config.woocommerce_api.get('orders').json():
         folder_name = f'order#{order["id"]}'
-        if find_folder_in_subdirectories(input_folder, folder_name):
+        if find_folder_in_subdirectories(app_config.input_folder, folder_name):
             if not is_order_already_completed(order):
-                order_path = find_folder_path_in_subdirectories(input_folder, folder_name)
+                order_path = find_folder_path_in_subdirectories(app_config.input_folder, folder_name)
                 order['order_path'] = order_path
                 
                 skin_file_paths = get_skin_file_paths(order_path, order['line_items'])
                 for order_item, skin_file_path in zip(order['line_items'], skin_file_paths):
                     order_item['file_path'] = skin_file_path
                 
-                start_printing(order, label_settings)
+                start_printing(order, app_config.label_settings)
                 
                 
 def create_pdf_with_svg_and_png(png_path, svg_path, output_pdf_path):
