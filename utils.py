@@ -2,7 +2,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 import pycountry
 import cairosvg
-import fitz # type: ignore
+import fitz
 import json
 import os
 import io
@@ -154,4 +154,4 @@ def start_printing(order: dict, label_settings: dict) -> None:
         add_label_to_image(item['file_path'], item['file_path'].replace('stage-1.png', 'skin.png'), order, label_settings)
         create_pdf_with_svg_and_png(item['file_path'].replace('stage-1.png', 'skin.png'), 'cut/cut.svg', item['file_path'].replace('stage-1.png', 'skin.pdf'))
         
-    # set_order_completed(order)
+    set_order_completed(order)
