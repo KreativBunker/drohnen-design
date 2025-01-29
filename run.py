@@ -21,7 +21,7 @@ def main():
     label_settings = {
         'text_font_path': os.getenv('TEXT_FONT_PATH'),
         'text_bold_font_path': os.getenv('TEXT_BOLD_FONT_PATH'),
-        'text_font_size': int(os.getenv('TEXT_FONT_SIZE')),
+        'text_font_size': os.getenv('TEXT_FONT_SIZE'),
         'text_sender_pos': os.getenv('TEXT_SENDER_POS'),
         'text_receiver_pos': os.getenv('TEXT_RECEIVER_POS'),
         'sender_name': os.getenv('SENDER_NAME'),
