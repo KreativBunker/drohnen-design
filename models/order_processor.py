@@ -46,6 +46,7 @@ class OrderProcessor:
 
     def process_order_items(self, order):
         for item in order['line_items']:
+            print(item, '\n')
             if 'file_path' not in item:
                 continue
             self.image_labeler.add_label(item['file_path'], item['file_path'].replace('stage-1.png', 'skin.png'), order)
