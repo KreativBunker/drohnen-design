@@ -26,14 +26,13 @@ class OrderProcessor:
         JSONHandler.save(status_file, orders_data)
 
     def process_orders(self):
-        for order in self.woocommerce_api.get('orders').json():
+        for order in self.woocommerce_api.get_orders():
             if not self.is_order_in_status(order, 'orders_failed.json'):
                 error_attempts = 0
                 while True:
                     try:
                         if not self.is_order_in_status(order, 'orders_completed.json'):
                             self.process_order_items(order)
-                            print(f'Order({order["id"]}) completed')
                         break
                     except Exception:
                         print(f'Order({order["id"]}) failed to print, retrying...')
@@ -54,4 +53,11 @@ class OrderProcessor:
             shutil.copy2(item['file_path'].replace('stage-1.png', 'skin.pdf'),
                   f'/opt/caldera/var/public/hotfolder/Drohnen-Design/skin_{item["id"]}.pdf')
             os.remove(item['file_path'])
-        self.set_order_status(order, 'orders_completed.json')
+            processed = True
+            print('done')
+        
+        if processed:
+            self.set_order_status(order, 'orders_completed.json')
+            print(f'Order({order["id"]}) completed')
+        else:
+            Exception(f'Order({order["id"]}) failed')
