@@ -31,13 +31,20 @@ def main():
         'sender_country': os.getenv('SENDER_COUNTRY')
     }
     
+    hotfolder_path = os.getenv('HOTFOLDER_PATH')
+    
+    settings = {
+        'hotfolder_path': hotfolder_path,
+        'label_settings': label_settings
+    }
+    
     ftp_handler = FTPHandler(
         server=os.getenv('FTP_SERVER'),
         username=os.getenv('FTP_USERNAME'),
         password=os.getenv('FTP_PASSWORD')
     )
     
-    order_processor = OrderProcessor(woocommerce, label_settings, ftp_handler)
+    order_processor = OrderProcessor(woocommerce, settings, ftp_handler)
     
     while True:
         try:

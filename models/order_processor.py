@@ -8,11 +8,12 @@ import os
 
 
 class OrderProcessor:
-    def __init__(self, woocommerce_api, label_settings, ftp_handler):
+    def __init__(self, woocommerce_api, settings, ftp_handler):
         self.woocommerce_api = woocommerce_api
-        self.label_settings = label_settings
+        self.hotfolder_path = settings['hotfolder_path']
+        self.label_settings = settings['label_settings']
         self.ftp_handler = ftp_handler
-        self.image_labeler = ImageLabeler(label_settings)
+        self.image_labeler = ImageLabeler(settings['label_settings'])
 
     def is_order_in_status(self, order, status_file):
         orders_data = JSONHandler.load(status_file)
@@ -51,7 +52,7 @@ class OrderProcessor:
             PDFCreator.create_with_overlay(item['file_path'].replace('stage-1.png', 'skin.png'), 'cuts/cut.pdf',
                                            item['file_path'].replace('stage-1.png', 'skin.pdf'))
             shutil.copy2(item['file_path'].replace('stage-1.png', 'skin.pdf'),
-                  f'/opt/caldera/var/public/hotfolder/Drohnen-Design/skin_{item["id"]}.pdf')
+                  f'{self.hotfolder_path}/skin_{item["id"]}.pdf')
             os.remove(item['file_path'])
             processed = True
             print('done')
