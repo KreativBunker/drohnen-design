@@ -62,10 +62,10 @@ def add_label_to_image(input_file: str, output_file: str, order: dict, label_set
     if image.mode != 'RGBA':
         image = image.convert('RGBA')
     
-    new_width = image.width + (168 * 3)
+    new_width = image.width + int(168 * 3)
     new_image = Image.new("RGBA", (new_width, image.height), (255, 255, 255, 0))
 
-    new_image.paste(image, ((168 * 3), 0))
+    new_image.paste(image, (int(168 * 3), 0))
 
     label_image = Image.new("RGBA", (new_width, image.height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(label_image)
@@ -101,7 +101,7 @@ def add_label_to_image(input_file: str, output_file: str, order: dict, label_set
     new_image.save(output_file, format='PNG', compress_level=0)
 
 
-def order_check(woocommerce_api: str, label_settings: str, ftp_server: str, ftp_username: str, ftp_password: str) -> None:
+def order_check(woocommerce_api: str, label_settings: str, ftp_server: str, ftp_username: str, ftp_password: str, hotfolder_path: str) -> None:
     for order in woocommerce_api.get('orders').json():
         if get_order_status(order['id']) == False:
             error_attemps = 0
@@ -117,7 +117,7 @@ def order_check(woocommerce_api: str, label_settings: str, ftp_server: str, ftp_
                                 download_temp_file(ftp_server, ftp_username, ftp_password, temp_file_path)
                                 order_item['file_path'] = 'print_file.png'
 
-                    start_printing(order, label_settings)
+                    start_printing(order, label_settings, hotfolder_path)
                     print(f'Order({order["id"]}) completed')
 
                     break
@@ -153,14 +153,14 @@ def create_pdf_with_png_and_pdf(png_path, pdf_path, output_pdf_path):
     doc.save(output_pdf_path)
     
 
-def start_printing(order: dict, label_settings: dict) -> None:
+def start_printing(order: dict, label_settings: dict, hotfolder_path: str) -> None:
     for item in order['line_items']:
         if 'file_path' not in item:
             continue
             raise Exception('File Path missed')
         add_label_to_image(item['file_path'], item['file_path'].replace('stage-1.png', 'skin.png'), order, label_settings)
         create_pdf_with_png_and_pdf(item['file_path'].replace('stage-1.png', 'skin.png'), 'cuts/cut.pdf', item['file_path'].replace('stage-1.png', 'skin.pdf'))
-        copy2(item['file_path'].replace('stage-1.png', 'skin.pdf'), f'./test/skin_{item["id"]}.pdf')
+        copy2(item['file_path'].replace('stage-1.png', 'skin.pdf'), f'{hotfolder_path}/skin_{item["id"]}.pdf')
         os.remove(item['file_path'])
     save_order(order['id'], True)
 
@@ -333,6 +333,8 @@ if __name__ == '__main__':
     FTP_USERNAME = os.getenv('FTP_USERNAME')
     FTP_PASSWORD = os.getenv('FTP_PASSWORD')
     
+    HOTFOLDER_PATH = os.getenv('HOTFOLDER_PATH')
+    
     while True:
         try:
             order_check(
@@ -340,7 +342,8 @@ if __name__ == '__main__':
                 LABEL_SETTINGS,
                 FTP_SERVER,
                 FTP_USERNAME,
-                FTP_PASSWORD
+                FTP_PASSWORD,
+                HOTFOLDER_PATH
             )
 
         except Exception as error:
