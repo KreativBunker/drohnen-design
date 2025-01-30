@@ -97,7 +97,6 @@ def add_label_to_image(input_file: str, output_file: str, order: dict, label_set
     draw.text((receiver_position[0] * 3, receiver_position[1] + (80 * 3)), country, font=font_normal, fill=text_color)
 
     new_image.paste(label_image, (0, 0), label_image)
-
     new_image.save(output_file, format='PNG', compress_level=0)
 
 
@@ -157,11 +156,21 @@ def start_printing(order: dict, label_settings: dict, hotfolder_path: str) -> No
     for item in order['line_items']:
         if 'file_path' not in item:
             continue
-            raise Exception('File Path missed')
-        add_label_to_image(item['file_path'], item['file_path'].replace('stage-1.png', 'skin.png'), order, label_settings)
-        create_pdf_with_png_and_pdf(item['file_path'].replace('stage-1.png', 'skin.png'), 'cuts/cut.pdf', item['file_path'].replace('stage-1.png', 'skin.pdf'))
-        copy2(item['file_path'].replace('stage-1.png', 'skin.pdf'), f'{hotfolder_path}/skin_{item["id"]}.pdf')
-        os.remove(item['file_path'])
+        
+        input_file = item['file_path']
+        output_file = item['file_path'].replace('stage-1.png', 'skin.png')
+        add_label_to_image(input_file, output_file, order, label_settings)
+        
+        pdf_path = 'cuts/cut.pdf'
+        output_pdf_path = item['file_path'].replace('stage-1.png', 'skin.pdf')
+        create_pdf_with_png_and_pdf(output_file, pdf_path, output_pdf_path)
+        
+        final_pdf_path = f'{hotfolder_path}/skin_{item["id"]}.pdf'
+        copy2(output_pdf_path, final_pdf_path)
+        
+        temp_file = input_file
+        os.remove(temp_file)
+        
     save_order(order['id'], True)
 
 
