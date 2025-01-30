@@ -4,6 +4,7 @@ import json
 import os
 import time
 import sqlite3
+import requests
 import traceback
 
 from ftplib import FTP_TLS
@@ -100,7 +101,17 @@ def add_label_to_image(input_file: str, output_file: str, order: dict, label_set
     new_image.save(output_file, format='PNG', compress_level=0)
 
 
-def order_check(woocommerce_api: str, label_settings: str, ftp_server: str, ftp_username: str, ftp_password: str, hotfolder_path: str) -> None:
+def get_print_id(woocommerce_api, order: dict):
+    for order_item in order['line_items']:
+        for product in woocommerce_api.get("products").json():
+            if order_item['product_id'] == product['id']:
+                for meta in product['meta_data']:
+                    if meta['key'] == 'druck-id':
+                        return meta['value']
+    return None
+
+
+def order_check(woocommerce_api: str, label_settings: str, ftp_server: str, ftp_username: str, ftp_password: str, hotfolder_path: str, url: str) -> None:
     for order in woocommerce_api.get('orders').json():
         if get_order_status(order['id']) == False:
             error_attemps = 0
@@ -113,7 +124,7 @@ def order_check(woocommerce_api: str, label_settings: str, ftp_server: str, ftp_
                         for meta in order_item['meta_data']:
                             if 'file' in meta['value']:
                                 temp_file_path = meta['value']['file']
-                                download_temp_file(ftp_server, ftp_username, ftp_password, temp_file_path)
+                                download_temp_file(ftp_server, ftp_username, ftp_password, temp_file_path, url)
                                 order_item['file_path'] = 'print_file.png'
 
                     start_printing(order, label_settings, hotfolder_path)
@@ -199,6 +210,15 @@ def search_keys_in_dict(data, keys, output_dir="."):
             search_keys_in_dict(item, keys, output_dir)
             
 
+def download_pdf(url: str, output_file: str):
+    response = requests.get(url, stream=True)
+
+    if response.status_code == 200:
+        with open(output_file, "wb") as pdf_file:
+            for chunk in response.iter_content(1024):
+                pdf_file.write(chunk)
+
+
 def download_file_from_ftp_tls(server, username, password, remote_file_path, local_file_path):
 
     with FTP_TLS(server) as ftp:
@@ -209,13 +229,14 @@ def download_file_from_ftp_tls(server, username, password, remote_file_path, loc
             ftp.retrbinary(f"RETR {remote_file_path}", local_file.write)
 
 
-
-def download_temp_file(ftp_server: str, ftp_username: str, ftp_password: str, file_path: str):
+def download_temp_file(ftp_server: str, ftp_username: str, ftp_password: str, file_path: str, url: str):
     file_path = file_path + '.tmp'
     temp_output_file = file_path.split('/')[len(file_path.split('/'))-1]
     temp_output_json_file = temp_output_file.replace('.tmp', '.json')
 
-
+    file_id = file_path.split('_')[0].split('/')[2]
+    download_pdf(f'{url}/design-editor/?pdf_download={file_id}', 'test.pdf')
+    
     download_file_from_ftp_tls(
         server=ftp_server,
         username=ftp_username,
@@ -352,7 +373,8 @@ if __name__ == '__main__':
                 FTP_SERVER,
                 FTP_USERNAME,
                 FTP_PASSWORD,
-                HOTFOLDER_PATH
+                HOTFOLDER_PATH,
+                URL
             )
 
         except Exception as error:
