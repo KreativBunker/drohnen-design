@@ -138,7 +138,8 @@ def order_check(woocommerce_api: str, label_settings: str, ftp_server: str, ftp_
                     time.sleep(5)
                 
                 if error_attemps >= 3:
-                    save_order(order['id'], False)
+                    if not get_order(order['id']):
+                        save_order(order['id'], False)
                     print(f'Order({order["id"]}) failed to print')
                     break
                 
@@ -182,7 +183,10 @@ def start_printing(order: dict, label_settings: dict, hotfolder_path: str) -> No
         temp_file = input_file
         os.remove(temp_file)
         
-    save_order(order['id'], True)
+    if get_order(order['id']):
+        update_order(order['id'], True)
+    else:
+        save_order(order['id'], True)
 
 
 def save_base64_to_png(base64_data, output_file):
@@ -294,6 +298,14 @@ def save_order(id: int, status: bool):
     cursor.execute("INSERT INTO orders (id, status) VALUES (?, ?)", (id, status))
     conn.commit()
     conn.close()
+    
+    
+def update_order(order_id: int, status: bool):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE orders SET status = ? WHERE id = ?", (status, order_id))
+    conn.commit()
+    conn.close()
 
 
 def get_orders():
@@ -308,12 +320,10 @@ def get_orders():
 
 def get_order(id: int):
     orders = get_orders()
-    
     if orders:
         for order in orders:
             if order['id'] == id:
                 return order
-        
     return None
 
 
