@@ -6,41 +6,11 @@ import sqlite3
 import requests
 import traceback
 
-from shutil import copy2
-
 import fitz
 import pycountry
 from PIL import Image, ImageDraw, ImageFont
 from dotenv import load_dotenv
 from woocommerce import API
-
-
-def find_folder_in_subdirectories(root_path: str, target_folder_name: str) -> bool:
-    for dirpath, dirnames, _ in os.walk(root_path):
-        if target_folder_name in dirnames:
-            return True
-    return False
-
-
-def find_folder_path_in_subdirectories(root_path: str, target_folder_name: str) -> str:
-    for dirpath, dirnames, _ in os.walk(root_path):
-        if target_folder_name in dirnames:
-            return os.path.join(dirpath, target_folder_name)
-    return None
-        
-        
-def get_skin_file_paths(order_path: str, order_items: list) -> list[str]:
-    skin_file_paths = []
-    
-    item_folders = [i for i in os.listdir(order_path) if i != '.DS_Store']
-    for item_folder, item_order in zip(item_folders, order_items):
-        _, _, item_product, _, item_quanity = item_folder.split()
-        if item_product.endswith(str(item_order['product_id'])) and item_quanity.startswith(str(item_order['quantity'])):
-            skin_file_path = order_path + '/' + item_folder + '/stage-1.png'
-            if os.path.exists(skin_file_path):
-                skin_file_paths.append(skin_file_path)
-                
-    return skin_file_paths
 
 
 def get_country_name(code):
@@ -56,7 +26,7 @@ def get_order_status(order: dict):
 
 
 def add_label_to_pdf(input_file: str, output_file: str, order: dict, label_settings: dict):
-    doc = fitz.open(input_file)  # Öffne die PDF-Datei
+    doc = fitz.open(input_file)
 
     font_path = label_settings['text_font_path']
     font_bold_path = label_settings['text_bold_font_path']
@@ -71,7 +41,7 @@ def add_label_to_pdf(input_file: str, output_file: str, order: dict, label_setti
     receiver_position = tuple(map(int, label_settings['text_receiver_pos'].split(',')))
     
     text_color = (0, 0, 0)
-    extra_width = 168 * 3
+    extra_width = 168 * 1
 
     for page in doc:
         pix = page.get_pixmap()
@@ -111,14 +81,41 @@ def add_label_to_pdf(input_file: str, output_file: str, order: dict, label_setti
     doc.close()
 
 
+def merge_cut_file(base_pdf_path: str, overlay_pdf_path: str, output_pdf_path: str):
+    base_pdf = fitz.open(base_pdf_path)
+    overlay_pdf = fitz.open(overlay_pdf_path)
 
-def get_print_id(woocommerce_api, order: dict):
+    min_pages = min(len(base_pdf), len(overlay_pdf))
+
+    for i in range(min_pages):
+        base_page = base_pdf[i]
+        overlay_page = overlay_pdf[i]
+        base_page.show_pdf_page(base_page.rect, overlay_pdf, i)
+
+    base_pdf.save(output_pdf_path)
+    base_pdf.close()
+    overlay_pdf.close()
+
+def find_key_in_nested_dict(data, key):
+    if isinstance(data, dict):
+        if key in data:
+            return data[key]
+        for k, v in data.items():
+            result = find_key_in_nested_dict(v, key)
+            if result is not None:
+                return result
+    elif isinstance(data, list):
+        for item in data:
+            result = find_key_in_nested_dict(item, key)
+            if result is not None:
+                return result
+    return None
+
+def get_print_id(order: dict):
     for order_item in order['line_items']:
-        for product in woocommerce_api.get("products").json():
-            if order_item['product_id'] == product['id']:
-                for meta in product['meta_data']:
-                    if meta['key'] == 'druck-id':
-                        return meta['value']
+        for meta in WOOCOMMERCE_API.get(f"products/{order_item['product_id']}").json()['meta_data']:
+            if meta['key'] == 'druck-id':
+                return meta['value']
     return None
 
 
@@ -131,35 +128,39 @@ def get_file_id(order: dict):
                 file_id = str(meta['value']['file']).split('_')[0].split('/')[2]
                 return file_id
     return None
-                
-                
-def create_pdf_with_png_and_pdf(png_path, pdf_path, output_pdf_path):
-    cut_size = get_pdf_size('cuts/cut.pdf')
-
-    doc = fitz.open()
-    page = doc.new_page(width=cut_size[0] + (168 * 3), height=cut_size[1])
-
-    img = Image.open(png_path)
-
-    img_buffer = io.BytesIO()
-    img.save(img_buffer, format="PNG", compress_level=0)
-    img_buffer.seek(0)
-
-    page.insert_image(page.rect, stream=img_buffer.getvalue())
-
-    overlay_pdf = fitz.open(pdf_path)
-    page.show_pdf_page(page.rect, overlay_pdf, 0)
-
-    doc.save(output_pdf_path)
     
+
+def get_cut_file(order: dict):
+    print_id = get_print_id(order)
+    for file in os.listdir('cuts'):
+        if print_id == file:
+            return f'cuts/{file}'
+    return None
+
 
 def start_printing(order: dict, label_settings: dict, hotfolder_path: str) -> None:
     file_id = get_file_id(order)
     for file in os.listdir('temp'):
-        if file_id in file:
+        if f'{file_id}.pdf' == file:
             file_path = f'temp/{file}'
-            file_output_path = f'temp/{1}_{file}'
+            file_output_path = f'temp/label_{file}'
             add_label_to_pdf(file_path, file_output_path, order, label_settings)
+            cut_file = get_cut_file(order)
+            
+            if not cut_file:
+                raise Exception('Cut file not found')
+            
+            final_output = f'{hotfolder_path}/final_{file}'
+            merge_cut_file(file_output_path, cut_file, final_output)
+            
+            if get_order(order):
+                update_order(order, True)
+            else:
+                save_order(order, True)
+                
+            os.remove(file_path)
+            os.remove(file_output_path)
+                
             break
 
 
@@ -260,7 +261,9 @@ def order_check(woocommerce_api: str, label_settings: str, hotfolder_path: str, 
                 
                 if error_attemps >= 3:
                     if not get_order(order):
-                        save_order(order, False)
+                        save_order(order, -1)
+                    else:
+                        update_order(order, -1)
                     print(f'Order({order["id"]}) failed to print')
                     break
 
