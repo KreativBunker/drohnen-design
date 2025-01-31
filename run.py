@@ -55,19 +55,8 @@ def get_order_status(order: dict):
     return False
 
 
-def add_label_to_image(input_file: str, output_file: str, order: dict, label_settings: dict):
-    image = Image.open(input_file)
-
-    if image.mode != 'RGBA':
-        image = image.convert('RGBA')
-    
-    new_width = image.width + int(168 * 3)
-    new_image = Image.new("RGBA", (new_width, image.height), (255, 255, 255, 0))
-
-    new_image.paste(image, (int(168 * 3), 0))
-
-    label_image = Image.new("RGBA", (new_width, image.height), (255, 255, 255, 0))
-    draw = ImageDraw.Draw(label_image)
+def add_label_to_pdf(input_file: str, output_file: str, order: dict, label_settings: dict):
+    doc = fitz.open(input_file)  # Öffne die PDF-Datei
 
     font_path = label_settings['text_font_path']
     font_bold_path = label_settings['text_bold_font_path']
@@ -82,21 +71,45 @@ def add_label_to_image(input_file: str, output_file: str, order: dict, label_set
     receiver_position = tuple(map(int, label_settings['text_receiver_pos'].split(',')))
     
     text_color = (0, 0, 0)
-    
-    draw.text((sender_position[0] * 3, sender_position[1] + (0 * 3)), "Absender:", font=font_bold, fill=text_color)
-    draw.text((sender_position[0] * 3, sender_position[1] + (20 * 3)), label_settings['sender_name'], font=font_normal, fill=text_color)
-    draw.text((sender_position[0] * 3, sender_position[1] + (40 * 3)), label_settings['sender_street'], font=font_normal, fill=text_color)
-    draw.text((sender_position[0] * 3, sender_position[1] + (60 * 3)), f"{label_settings['sender_postalcode']} {label_settings['sender_city']}", font=font_normal, fill=text_color)
-    draw.text((sender_position[0] * 3, sender_position[1] + (80 * 3)), label_settings['sender_country'], font=font_normal, fill=text_color)
-    
-    draw.text((receiver_position[0] * 3, receiver_position[1] + (0 * 3)), "Empfänger:", font=font_bold, fill=text_color)
-    draw.text((receiver_position[0] * 3, receiver_position[1] + (20 * 3)), f"{order['shipping']['first_name']} {order['shipping']['last_name']}", font=font_normal, fill=text_color)
-    draw.text((receiver_position[0] * 3, receiver_position[1] + (40 * 3)), order['shipping']['address_1'], font=font_normal, fill=text_color)
-    draw.text((receiver_position[0] * 3, receiver_position[1] + (60 * 3)), f"{order['shipping']['postcode']} {order['shipping']['city']}", font=font_normal, fill=text_color)
-    draw.text((receiver_position[0] * 3, receiver_position[1] + (80 * 3)), country, font=font_normal, fill=text_color)
+    extra_width = 168 * 3
 
-    new_image.paste(label_image, (0, 0), label_image)
-    new_image.save(output_file, format='PNG', compress_level=0)
+    for page in doc:
+        pix = page.get_pixmap()
+        old_width, old_height = pix.width, pix.height
+        new_width = old_width + extra_width
+
+        mediabox = page.rect 
+        new_mediabox = fitz.Rect(0, 0, new_width, old_height)
+        page.set_mediabox(new_mediabox)
+
+        image = Image.new("RGB", (new_width, old_height), (255, 255, 255))  
+        page_image = Image.frombytes("RGB", [old_width, old_height], pix.samples)
+
+        image.paste(page_image, (extra_width, 0))
+
+        draw = ImageDraw.Draw(image)
+
+        draw.text((20, sender_position[1]), "Absender:", font=font_bold, fill=text_color)
+        draw.text((20, sender_position[1] + 20), label_settings['sender_name'], font=font_normal, fill=text_color)
+        draw.text((20, sender_position[1] + 40), label_settings['sender_street'], font=font_normal, fill=text_color)
+        draw.text((20, sender_position[1] + 60), f"{label_settings['sender_postalcode']} {label_settings['sender_city']}", font=font_normal, fill=text_color)
+        draw.text((20, sender_position[1] + 80), label_settings['sender_country'], font=font_normal, fill=text_color)
+
+        draw.text((20, receiver_position[1]), "Empfänger:", font=font_bold, fill=text_color)
+        draw.text((20, receiver_position[1] + 20), f"{order['shipping']['first_name']} {order['shipping']['last_name']}", font=font_normal, fill=text_color)
+        draw.text((20, receiver_position[1] + 40), order['shipping']['address_1'], font=font_normal, fill=text_color)
+        draw.text((20, receiver_position[1] + 60), f"{order['shipping']['postcode']} {order['shipping']['city']}", font=font_normal, fill=text_color)
+        draw.text((20, receiver_position[1] + 80), country, font=font_normal, fill=text_color)
+
+        img_buffer = io.BytesIO()
+        image.save(img_buffer, format="PNG", optimize=True)
+        img_buffer.seek(0)
+
+        page.insert_image(fitz.Rect(0, 0, new_width, old_height), stream=img_buffer.getvalue())
+
+    doc.save(output_file)
+    doc.close()
+
 
 
 def get_print_id(woocommerce_api, order: dict):
@@ -141,28 +154,13 @@ def create_pdf_with_png_and_pdf(png_path, pdf_path, output_pdf_path):
     
 
 def start_printing(order: dict, label_settings: dict, hotfolder_path: str) -> None:
-    for item in order['line_items']:
-        if 'file_path' not in item:
-            continue
-        
-        input_file = item['file_path']
-        output_file = item['file_path'].replace('stage-1.png', 'skin.png')
-        add_label_to_image(input_file, output_file, order, label_settings)
-        
-        pdf_path = 'cuts/cut.pdf'
-        output_pdf_path = item['file_path'].replace('stage-1.png', 'skin.pdf')
-        create_pdf_with_png_and_pdf(output_file, pdf_path, output_pdf_path)
-        
-        final_pdf_path = f'{hotfolder_path}/skin_{item["id"]}.pdf'
-        copy2(output_pdf_path, final_pdf_path)
-        
-        temp_file = input_file
-        os.remove(temp_file)
-        
-    if get_order(order):
-        update_order(order, True)
-    else:
-        save_order(order, True)
+    file_id = get_file_id(order)
+    for file in os.listdir('temp'):
+        if file_id in file:
+            file_path = f'temp/{file}'
+            file_output_path = f'temp/{1}_{file}'
+            add_label_to_pdf(file_path, file_output_path, order, label_settings)
+            break
 
 
 def save_base64_to_png(base64_data, output_file):
@@ -312,13 +310,14 @@ if __name__ == '__main__':
     HOTFOLDER_PATH = os.getenv('HOTFOLDER_PATH')
     
     while True:
- 
-        order_check(
-            WOOCOMMERCE_API,
-            LABEL_SETTINGS,
-            HOTFOLDER_PATH,
-            URL
-        )
-
+        try:
+            order_check(
+                WOOCOMMERCE_API,
+                LABEL_SETTINGS,
+                HOTFOLDER_PATH,
+                URL
+            )
+        except Exception as error:
+            print(error)
 
         time.sleep(5)
