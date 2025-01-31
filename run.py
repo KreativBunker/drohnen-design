@@ -118,29 +118,6 @@ def get_file_id(order: dict):
                 file_id = str(meta['value']['file']).split('_')[0].split('/')[2]
                 return file_id
     return None
-
-
-def order_check(woocommerce_api: str, label_settings: str, hotfolder_path: str, url: str) -> None:
-    for order in woocommerce_api.get('orders').json():
-        if get_order_status(order) == False:
-            error_attemps = 0
-            while True:
-                try:
-                    file_id = get_file_id(order)
-                    download_pdf(f'{url}/design-editor/?pdf_download={file_id}', f'temp/{file_id}.pdf')
-                    start_printing(order, label_settings, hotfolder_path)
-                    print(f'Order({order["id"]}) completed')
-                    break
-                except Exception as error:
-                    print(f'Order({order["id"]}) failed to print, try again... ({traceback.format_exc()})')
-                    error_attemps += 1
-                    time.sleep(5)
-                
-                if error_attemps >= 3:
-                    if not get_order(order):
-                        save_order(order, False)
-                    print(f'Order({order["id"]}) failed to print')
-                    break
                 
                 
 def create_pdf_with_png_and_pdf(png_path, pdf_path, output_pdf_path):
@@ -265,6 +242,29 @@ def get_order(order: dict):
             if order_db['id'] == order['id']:
                 return order_db
     return None
+
+
+def order_check(woocommerce_api: str, label_settings: str, hotfolder_path: str, url: str) -> None:
+    for order in woocommerce_api.get('orders').json():
+        if get_order_status(order) == False:
+            error_attemps = 0
+            while True:
+                try:
+                    file_id = get_file_id(order)
+                    download_pdf(f'{url}/design-editor/?pdf_download={file_id}', f'temp/{file_id}.pdf')
+                    start_printing(order, label_settings, hotfolder_path)
+                    print(f'Order({order["id"]}) completed')
+                    break
+                except Exception as error:
+                    print(f'Order({order["id"]}) failed to print, try again... ({traceback.format_exc()})')
+                    error_attemps += 1
+                    time.sleep(5)
+                
+                if error_attemps >= 3:
+                    if not get_order(order):
+                        save_order(order, False)
+                    print(f'Order({order["id"]}) failed to print')
+                    break
 
 
 if __name__ == '__main__':
