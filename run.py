@@ -41,7 +41,7 @@ def add_label_to_pdf(input_file: str, output_file: str, order: dict, label_setti
     receiver_position = tuple(map(int, label_settings['text_receiver_pos'].split(',')))
     
     text_color = (0, 0, 0)
-    extra_width = 168 * 1
+    extra_width = 178 * 1
 
     for page in doc:
         pix = page.get_pixmap()
