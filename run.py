@@ -1,14 +1,12 @@
 import base64
 import io
-import json
 import os
 import time
 import sqlite3
 import requests
 import traceback
 
-from ftplib import FTP_TLS
-from shutil import copy, copy2
+from shutil import copy2
 
 import fitz
 import pycountry
@@ -111,7 +109,7 @@ def get_print_id(woocommerce_api, order: dict):
     return None
 
 
-def order_check(woocommerce_api: str, label_settings: str, ftp_server: str, ftp_username: str, ftp_password: str, hotfolder_path: str, url: str) -> None:
+def order_check(woocommerce_api: str, label_settings: str, hotfolder_path: str, url: str) -> None:
     for order in woocommerce_api.get('orders').json():
         if get_order_status(order['id']) == False:
             error_attemps = 0
@@ -123,9 +121,8 @@ def order_check(woocommerce_api: str, label_settings: str, ftp_server: str, ftp_
                         
                         for meta in order_item['meta_data']:
                             if 'file' in meta['value']:
-                                temp_file_path = meta['value']['file']
-                                download_temp_file(ftp_server, ftp_username, ftp_password, temp_file_path, url)
-                                order_item['file_path'] = 'print_file.png'
+                                file_id = str(meta['value']['file']).split('_')[0].split('/')[2]
+                                download_pdf(f'{url}/design-editor/?pdf_download={file_id}', f'temp/{file_id}.pdf')
 
                     start_printing(order, label_settings, hotfolder_path)
                     print(f'Order({order["id"]}) completed')
@@ -199,19 +196,6 @@ def save_base64_to_png(base64_data, output_file):
             file.write(image_data)
     except Exception as e:
         print(f"Fehler beim Speichern von {output_file}: {e}")
-
-
-def search_keys_in_dict(data, keys, output_dir="."):
-    if isinstance(data, dict):
-        for key, value in data.items():
-            if key in keys:
-                output_file = os.path.join(output_dir, f"{key}.png")
-                save_base64_to_png(value, output_file)
-            else:
-                search_keys_in_dict(value, keys, output_dir)
-    elif isinstance(data, list):
-        for item in data:
-            search_keys_in_dict(item, keys, output_dir)
             
 
 def download_pdf(url: str, output_file: str):
@@ -221,52 +205,6 @@ def download_pdf(url: str, output_file: str):
         with open(output_file, "wb") as pdf_file:
             for chunk in response.iter_content(1024):
                 pdf_file.write(chunk)
-
-
-def download_file_from_ftp_tls(server, username, password, remote_file_path, local_file_path):
-
-    with FTP_TLS(server) as ftp:
-        ftp.login(user=username, passwd=password)
-        ftp.prot_p()
-        
-        with open(local_file_path, 'wb') as local_file:
-            ftp.retrbinary(f"RETR {remote_file_path}", local_file.write)
-
-
-def download_temp_file(ftp_server: str, ftp_username: str, ftp_password: str, file_path: str, url: str):
-    file_path = file_path + '.tmp'
-    temp_output_file = file_path.split('/')[len(file_path.split('/'))-1]
-    temp_output_json_file = temp_output_file.replace('.tmp', '.json')
-
-    file_id = file_path.split('_')[0].split('/')[2]
-    download_pdf(f'{url}/design-editor/?pdf_download={file_id}', 'test.pdf')
-    
-    download_file_from_ftp_tls(
-        server=ftp_server,
-        username=ftp_username,
-        password=ftp_password,
-        remote_file_path=f"/wp-content/uploads/lumise_data/user_data/{file_path}",
-        local_file_path=temp_output_file
-    )
-
-    try:
-        if os.path.exists(temp_output_file):
-            copy(temp_output_file, temp_output_json_file)
-        else:
-            exit()
-
-        with open(temp_output_json_file, "r") as file:
-            data = json.load(file)
-
-        keys = ["print_file"]
-
-        search_keys_in_dict(data, keys)
-
-        os.remove(temp_output_file)
-        os.remove(temp_output_json_file)
-
-    except Exception as e:
-        print(f"Fehler beim Verarbeiten der Datei: {e}")
 
 
 def get_pdf_size(file_path: str) -> list:
@@ -368,10 +306,6 @@ if __name__ == '__main__':
         consumer_secret=CONSUMER_SECRET,
         version='wc/v3'
     )
-
-    FTP_SERVER = os.getenv('FTP_SERVER')
-    FTP_USERNAME = os.getenv('FTP_USERNAME')
-    FTP_PASSWORD = os.getenv('FTP_PASSWORD')
     
     HOTFOLDER_PATH = os.getenv('HOTFOLDER_PATH')
     
@@ -380,9 +314,6 @@ if __name__ == '__main__':
             order_check(
                 WOOCOMMERCE_API,
                 LABEL_SETTINGS,
-                FTP_SERVER,
-                FTP_USERNAME,
-                FTP_PASSWORD,
                 HOTFOLDER_PATH,
                 URL
             )
