@@ -48,8 +48,8 @@ def get_country_name(code):
     return country.name if country else ''
 
 
-def get_order_status(id: int):
-    order = get_order(id)
+def get_order_status(order: dict):
+    order = get_order(order)
     if order:
         return order['status']
     return False
@@ -109,34 +109,36 @@ def get_print_id(woocommerce_api, order: dict):
     return None
 
 
+def get_file_id(order: dict):
+    for order_item in order['line_items']:
+        if not order_item['meta_data']:
+            continue
+        for meta in order_item['meta_data']:
+            if 'file' in meta['value']:
+                file_id = str(meta['value']['file']).split('_')[0].split('/')[2]
+                return file_id
+    return None
+
+
 def order_check(woocommerce_api: str, label_settings: str, hotfolder_path: str, url: str) -> None:
     for order in woocommerce_api.get('orders').json():
-        if get_order_status(order['id']) == False:
+        if get_order_status(order) == False:
             error_attemps = 0
             while True:
                 try:
-                    for order_item in order['line_items']:
-                        if not order_item['meta_data']:
-                            continue
-                        
-                        for meta in order_item['meta_data']:
-                            if 'file' in meta['value']:
-                                file_id = str(meta['value']['file']).split('_')[0].split('/')[2]
-                                download_pdf(f'{url}/design-editor/?pdf_download={file_id}', f'temp/{file_id}.pdf')
-
+                    file_id = get_file_id(order)
+                    download_pdf(f'{url}/design-editor/?pdf_download={file_id}', f'temp/{file_id}.pdf')
                     start_printing(order, label_settings, hotfolder_path)
                     print(f'Order({order["id"]}) completed')
-
                     break
-
                 except Exception as error:
                     print(f'Order({order["id"]}) failed to print, try again... ({traceback.format_exc()})')
                     error_attemps += 1
                     time.sleep(5)
                 
                 if error_attemps >= 3:
-                    if not get_order(order['id']):
-                        save_order(order['id'], False)
+                    if not get_order(order):
+                        save_order(order, False)
                     print(f'Order({order["id"]}) failed to print')
                     break
                 
@@ -180,10 +182,10 @@ def start_printing(order: dict, label_settings: dict, hotfolder_path: str) -> No
         temp_file = input_file
         os.remove(temp_file)
         
-    if get_order(order['id']):
-        update_order(order['id'], True)
+    if get_order(order):
+        update_order(order, True)
     else:
-        save_order(order['id'], True)
+        save_order(order, True)
 
 
 def save_base64_to_png(base64_data, output_file):
@@ -230,18 +232,18 @@ def create_db(db_name: str):
     conn.close()
 
 
-def save_order(id: int, status: bool):
+def save_order(order: dict, status: bool):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO orders (id, status) VALUES (?, ?)", (id, status))
+    cursor.execute("INSERT INTO orders (id, status) VALUES (?, ?)", (order['id'], status))
     conn.commit()
     conn.close()
     
     
-def update_order(order_id: int, status: bool):
+def update_order(order: dict, status: bool):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("UPDATE orders SET status = ? WHERE id = ?", (status, order_id))
+    cursor.execute("UPDATE orders SET status = ? WHERE id = ?", (status, order['id']))
     conn.commit()
     conn.close()
 
@@ -256,12 +258,12 @@ def get_orders():
     return [{"id": order[0], "status": bool(order[1]), "created_at": order[2]} for order in orders]
 
 
-def get_order(id: int):
-    orders = get_orders()
-    if orders:
-        for order in orders:
-            if order['id'] == id:
-                return order
+def get_order(order: dict):
+    orders_db = get_orders()
+    if orders_db:
+        for order_db in orders_db:
+            if order_db['id'] == order['id']:
+                return order_db
     return None
 
 
@@ -310,15 +312,13 @@ if __name__ == '__main__':
     HOTFOLDER_PATH = os.getenv('HOTFOLDER_PATH')
     
     while True:
-        try:
-            order_check(
-                WOOCOMMERCE_API,
-                LABEL_SETTINGS,
-                HOTFOLDER_PATH,
-                URL
-            )
+ 
+        order_check(
+            WOOCOMMERCE_API,
+            LABEL_SETTINGS,
+            HOTFOLDER_PATH,
+            URL
+        )
 
-        except Exception as error:
-            print(error)
 
         time.sleep(5)
