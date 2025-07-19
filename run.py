@@ -27,6 +27,7 @@ def get_order_status(order: dict):
 
 def add_label_to_pdf(input_file: str, output_file: str, order: dict, label_settings: dict):
     doc = fitz.open(input_file)
+    out_doc = fitz.open()
 
     font_path = label_settings['text_font_path']
     font_bold_path = label_settings['text_bold_font_path']
@@ -48,11 +49,7 @@ def add_label_to_pdf(input_file: str, output_file: str, order: dict, label_setti
         old_width, old_height = pix.width, pix.height
         new_width = old_width + extra_width
 
-        mediabox = page.rect 
-        new_mediabox = fitz.Rect(0, 0, new_width, old_height)
-        page.set_mediabox(new_mediabox)
-
-        image = Image.new("RGB", (new_width, old_height), (255, 255, 255))  
+        image = Image.new("RGB", (new_width, old_height), (255, 255, 255))
         page_image = Image.frombytes("RGB", [old_width, old_height], pix.samples)
 
         image.paste(page_image, (extra_width, 0))
@@ -75,9 +72,13 @@ def add_label_to_pdf(input_file: str, output_file: str, order: dict, label_setti
         image.save(img_buffer, format="PNG", optimize=True)
         img_buffer.seek(0)
 
-        page.insert_image(fitz.Rect(0, 0, new_width, old_height), stream=img_buffer.getvalue())
+        new_page = out_doc.new_page(width=new_width, height=old_height)
+        new_page.insert_image(
+            fitz.Rect(0, 0, new_width, old_height), stream=img_buffer.getvalue()
+        )
 
-    doc.save(output_file)
+    out_doc.save(output_file)
+    out_doc.close()
     doc.close()
 
 
