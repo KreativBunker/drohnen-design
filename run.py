@@ -43,11 +43,13 @@ def add_label_to_pdf(input_file: str, output_file: str, order: dict, label_setti
     
     text_color = (0, 0, 0)
     dpi = 150
-    zoom = dpi / 72  # scale factor for 150 dpi
-    extra_width = int(178 * zoom)
+    
+    scale = dpi / 72  # convert 72‑DPI width to target resolution
+    extra_width = int(178 * scale)
 
     for page in doc:
-        pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
+        pix = page.get_pixmap(dpi=dpi)
+
         old_width, old_height = pix.width, pix.height
         new_width = old_width + extra_width
 
