@@ -42,10 +42,12 @@ def add_label_to_pdf(input_file: str, output_file: str, order: dict, label_setti
     receiver_position = tuple(map(int, label_settings['text_receiver_pos'].split(',')))
     
     text_color = (0, 0, 0)
-    extra_width = 178 * 1
+    dpi = 150
+    zoom = dpi / 72  # scale factor for 150 dpi
+    extra_width = int(178 * zoom)
 
     for page in doc:
-        pix = page.get_pixmap()
+        pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
         old_width, old_height = pix.width, pix.height
         new_width = old_width + extra_width
 
