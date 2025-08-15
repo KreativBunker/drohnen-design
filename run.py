@@ -44,19 +44,22 @@ def add_label_to_pdf(input_file: str, output_file: str, order: dict, label_setti
     text_color = (0, 0, 0)
     dpi = 150
     
-    scale = dpi / 72  # convert 72‑DPI width to target resolution
-    extra_width = int(178 * scale)
+    scale = dpi / 72  # convert between PDF points (72 DPI) and target resolution
+    extra_width_pt = 178  # desired label margin in PDF points
+    extra_width_px = int(extra_width_pt * scale)
 
     for page in doc:
         pix = page.get_pixmap(dpi=dpi)
 
-        old_width, old_height = pix.width, pix.height
-        new_width = old_width + extra_width
+        old_width_px, old_height_px = pix.width, pix.height
+        old_width_pt, old_height_pt = page.rect.width, page.rect.height
+        new_width_px = old_width_px + extra_width_px
+        new_width_pt = old_width_pt + extra_width_pt
 
-        image = Image.new("RGB", (new_width, old_height), (255, 255, 255))
-        page_image = Image.frombytes("RGB", [old_width, old_height], pix.samples)
+        image = Image.new("RGB", (new_width_px, old_height_px), (255, 255, 255))
+        page_image = Image.frombytes("RGB", [old_width_px, old_height_px], pix.samples)
 
-        image.paste(page_image, (extra_width, 0))
+        image.paste(page_image, (extra_width_px, 0))
 
         draw = ImageDraw.Draw(image)
 
@@ -76,9 +79,9 @@ def add_label_to_pdf(input_file: str, output_file: str, order: dict, label_setti
         image.save(img_buffer, format="PNG", optimize=True)
         img_buffer.seek(0)
 
-        new_page = out_doc.new_page(width=new_width, height=old_height)
+        new_page = out_doc.new_page(width=new_width_pt, height=old_height_pt)
         new_page.insert_image(
-            fitz.Rect(0, 0, new_width, old_height), stream=img_buffer.getvalue()
+            fitz.Rect(0, 0, new_width_pt, old_height_pt), stream=img_buffer.getvalue()
         )
 
     out_doc.save(output_file)
