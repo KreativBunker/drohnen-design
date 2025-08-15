@@ -5,16 +5,12 @@ import time
 import sqlite3
 import requests
 import traceback
-import logging
 
 import fitz
 import pycountry
 from PIL import Image, ImageDraw, ImageFont
 from dotenv import load_dotenv
 from woocommerce import API
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 def get_country_name(code):
@@ -91,14 +87,6 @@ def add_label_to_pdf(input_file: str, output_file: str, order: dict, label_setti
 
 
 def merge_cut_file(base_pdf_path: str, overlay_pdf_path: str, output_pdf_path: str):
-    """Overlay ``overlay_pdf`` onto ``base_pdf`` page by page.
-
-    Each page pair is compared for size differences. When dimensions differ,
-    a :class:`fitz.Matrix` is calculated to scale and translate the overlay
-    page onto the base page. If the aspect ratios cannot be matched within a
-    small tolerance, an error is raised to avoid misaligned output.
-    """
-
     base_pdf = fitz.open(base_pdf_path)
     overlay_pdf = fitz.open(overlay_pdf_path)
 
@@ -107,44 +95,7 @@ def merge_cut_file(base_pdf_path: str, overlay_pdf_path: str, output_pdf_path: s
     for i in range(min_pages):
         base_page = base_pdf[i]
         overlay_page = overlay_pdf[i]
-
-        base_rect = base_page.rect
-        overlay_rect = overlay_page.rect
-
-        logger.debug(
-            "Page %d: base size %sx%s, overlay size %sx%s", 
-            i, base_rect.width, base_rect.height, overlay_rect.width, overlay_rect.height
-        )
-
-        if (
-            abs(base_rect.width - overlay_rect.width) > 1e-3
-            or abs(base_rect.height - overlay_rect.height) > 1e-3
-        ):
-            scale_x = base_rect.width / overlay_rect.width
-            scale_y = base_rect.height / overlay_rect.height
-
-            if abs(scale_x - scale_y) > 0.01:
-                logger.error(
-                    "Aspect ratio mismatch on page %d: base %sx%s, overlay %sx%s",
-                    i,
-                    base_rect.width,
-                    base_rect.height,
-                    overlay_rect.width,
-                    overlay_rect.height,
-                )
-                raise ValueError(
-                    f"Cannot merge page {i}: differing aspect ratios {(base_rect.width, base_rect.height)} vs {(overlay_rect.width, overlay_rect.height)}"
-                )
-
-            dx = base_rect.x0 - overlay_rect.x0 * scale_x
-            dy = base_rect.y0 - overlay_rect.y0 * scale_y
-            matrix = fitz.Matrix(scale_x, scale_y).pretranslate(dx, dy)
-            logger.info("Scaling overlay page %d with matrix %s", i, matrix)
-
-            target_rect = overlay_rect.transform(matrix)
-            base_page.show_pdf_page(target_rect, overlay_pdf, i, keep_proportion=False)
-        else:
-            base_page.show_pdf_page(base_rect, overlay_pdf, i)
+        base_page.show_pdf_page(base_page.rect, overlay_pdf, i)
 
     base_pdf.save(output_pdf_path)
     base_pdf.close()
