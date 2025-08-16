@@ -98,14 +98,16 @@ def merge_cut_file(base_pdf_path: str, overlay_pdf_path: str, output_pdf_path: s
     for i in range(min_pages):
         base_page = base_pdf[i]
         overlay_page = overlay_pdf[i]
-        
-        x_offset = base_page.rect.width - overlay_page.rect.width
+
+        # Center overlay page on the base page
+        x_offset = (base_page.rect.width - overlay_page.rect.width) / 2
+        y_offset = (base_page.rect.height - overlay_page.rect.height) / 2
 
         rect = fitz.Rect(
             x_offset,
-            0,
+            y_offset,
             x_offset + overlay_page.rect.width,
-            overlay_page.rect.height,
+            y_offset + overlay_page.rect.height,
         )
         base_page.show_pdf_page(rect, overlay_pdf, i)
 
