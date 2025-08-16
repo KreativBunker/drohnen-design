@@ -63,17 +63,17 @@ def add_label_to_pdf(input_file: str, output_file: str, order: dict, label_setti
 
         draw = ImageDraw.Draw(image)
 
-        draw.text((20, sender_position[1]), "Absender:", font=font_bold, fill=text_color)
-        draw.text((20, sender_position[1] + 20), label_settings['sender_name'], font=font_normal, fill=text_color)
-        draw.text((20, sender_position[1] + 40), label_settings['sender_street'], font=font_normal, fill=text_color)
-        draw.text((20, sender_position[1] + 60), f"{label_settings['sender_postalcode']} {label_settings['sender_city']}", font=font_normal, fill=text_color)
-        draw.text((20, sender_position[1] + 80), label_settings['sender_country'], font=font_normal, fill=text_color)
+        draw.text((70, sender_position[1]), "Absender:", font=font_bold, fill=text_color)
+        draw.text((70, sender_position[1] + 30), label_settings['sender_name'], font=font_normal, fill=text_color)
+        draw.text((70, sender_position[1] + 60), label_settings['sender_street'], font=font_normal, fill=text_color)
+        draw.text((70, sender_position[1] + 90), f"{label_settings['sender_postalcode']} {label_settings['sender_city']}", font=font_normal, fill=text_color)
+        draw.text((70, sender_position[1] + 120), label_settings['sender_country'], font=font_normal, fill=text_color)
 
-        draw.text((20, receiver_position[1]), "Empfänger:", font=font_bold, fill=text_color)
-        draw.text((20, receiver_position[1] + 20), f"{order['shipping']['first_name']} {order['shipping']['last_name']}", font=font_normal, fill=text_color)
-        draw.text((20, receiver_position[1] + 40), order['shipping']['address_1'], font=font_normal, fill=text_color)
-        draw.text((20, receiver_position[1] + 60), f"{order['shipping']['postcode']} {order['shipping']['city']}", font=font_normal, fill=text_color)
-        draw.text((20, receiver_position[1] + 80), country, font=font_normal, fill=text_color)
+        draw.text((70, receiver_position[1]), "Empfänger:", font=font_bold, fill=text_color)
+        draw.text((70, receiver_position[1] + 30), f"{order['shipping']['first_name']} {order['shipping']['last_name']}", font=font_normal, fill=text_color)
+        draw.text((70, receiver_position[1] + 60), order['shipping']['address_1'], font=font_normal, fill=text_color)
+        draw.text((70, receiver_position[1] + 90), f"{order['shipping']['postcode']} {order['shipping']['city']}", font=font_normal, fill=text_color)
+        draw.text((70, receiver_position[1] + 120), country, font=font_normal, fill=text_color)
 
         img_buffer = io.BytesIO()
         image.save(img_buffer, format="PNG", optimize=True)
