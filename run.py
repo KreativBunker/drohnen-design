@@ -99,7 +99,7 @@ def merge_cut_file(base_pdf_path: str, overlay_pdf_path: str, output_pdf_path: s
         base_page = base_pdf[i]
         overlay_page = overlay_pdf[i]
         
-        x_offset = overlay_page.rect.width - base_page.rect.width
+        x_offset = base_page.rect.width - overlay_page.rect.width
 
         rect = fitz.Rect(
             x_offset,
