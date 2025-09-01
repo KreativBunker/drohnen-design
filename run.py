@@ -6,7 +6,6 @@ import sqlite3
 import requests
 import traceback
 import threading
-from pathlib import Path
 from typing import Callable
 
 import fitz
@@ -14,10 +13,6 @@ import pycountry
 from PIL import Image, ImageDraw, ImageFont
 from dotenv import load_dotenv
 from woocommerce import API
-
-# Locate package resources
-PACKAGE_DIR = Path(__file__).resolve().parent
-CUTS_DIR = PACKAGE_DIR / "cuts"
 
 
 # Database name is set at runtime by the UI before processing starts.
@@ -163,9 +158,9 @@ def get_file_id(order: dict):
 def get_cut_file(order: dict, api: API):
     """Find the matching cut file for an order."""
     print_id = get_print_id(order, api)
-    for file in CUTS_DIR.iterdir():
-        if print_id == file.name:
-            return str(file)
+    for file in os.listdir('cuts'):
+        if print_id == file:
+            return f'cuts/{file}'
     return None
 
 
