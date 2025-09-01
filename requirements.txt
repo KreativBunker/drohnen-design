@@ -4,4 +4,3 @@ cairosvg
 PyMuPDF
 python-dotenv
 woocommerce
-requests
