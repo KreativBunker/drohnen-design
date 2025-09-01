@@ -1,8 +1,12 @@
 import tkinter as tk
-
+from pathlib import Path
 
 processor = None
 status_label: tk.Label | None = None
+
+PACKAGE_DIR = Path(__file__).resolve().parent
+DEFAULT_FONT = PACKAGE_DIR / "fonts" / "roboto.ttf"
+DEFAULT_BOLD_FONT = PACKAGE_DIR / "fonts" / "Roboto-Bold.ttf"
 
 
 def start_processing():
@@ -12,7 +16,7 @@ def start_processing():
     import os
     from dotenv import load_dotenv
     from woocommerce import API
-    import run
+    from . import run
 
     load_dotenv(override=True)
 
@@ -24,8 +28,8 @@ def start_processing():
     run.create_db(run.DB_NAME)
 
     label_settings = {
-        'text_font_path': os.getenv('TEXT_FONT_PATH'),
-        'text_bold_font_path': os.getenv('TEXT_BOLD_FONT_PATH'),
+        'text_font_path': os.getenv('TEXT_FONT_PATH', str(DEFAULT_FONT)),
+        'text_bold_font_path': os.getenv('TEXT_BOLD_FONT_PATH', str(DEFAULT_BOLD_FONT)),
         'text_font_size': os.getenv('TEXT_FONT_SIZE'),
         'text_sender_pos': os.getenv('TEXT_SENDER_POS'),
         'text_receiver_pos': os.getenv('TEXT_RECEIVER_POS'),
@@ -33,7 +37,7 @@ def start_processing():
         'sender_street': os.getenv('SENDER_STREET'),
         'sender_postalcode': os.getenv('SENDER_POSTALCODE'),
         'sender_city': os.getenv('SENDER_CITY'),
-        'sender_country': os.getenv('SENDER_COUNTRY')
+        'sender_country': os.getenv('SENDER_COUNTRY'),
     }
 
     api = API(
@@ -67,16 +71,23 @@ def stop_processing():
     stop_button.config(state=tk.DISABLED)
 
 
-root = tk.Tk()
-root.title('Drohnen Design')
+def main() -> None:
+    """Launch the simple Tkinter based GUI."""
+    global status_label, start_button, stop_button
+    root = tk.Tk()
+    root.title('Drohnen Design')
 
-start_button = tk.Button(root, text='Start', command=start_processing)
-start_button.pack(padx=10, pady=5)
+    start_button = tk.Button(root, text='Start', command=start_processing)
+    start_button.pack(padx=10, pady=5)
 
-stop_button = tk.Button(root, text='Stop', state=tk.DISABLED, command=stop_processing)
-stop_button.pack(padx=10, pady=5)
+    stop_button = tk.Button(root, text='Stop', state=tk.DISABLED, command=stop_processing)
+    stop_button.pack(padx=10, pady=5)
 
-status_label = tk.Label(root, text='Gestoppt')
-status_label.pack(padx=10, pady=5)
+    status_label = tk.Label(root, text='Gestoppt')
+    status_label.pack(padx=10, pady=5)
 
-root.mainloop()
+    root.mainloop()
+
+
+if __name__ == '__main__':  # pragma: no cover - manual invocation
+    main()
