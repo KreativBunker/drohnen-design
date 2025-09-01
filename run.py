@@ -15,6 +15,9 @@ from dotenv import load_dotenv
 from woocommerce import API
 
 
+# Database name is set at runtime by the UI before processing starts.
+DB_NAME: str | None = None
+
 def get_country_name(code):
     country = pycountry.countries.get(alpha_2=code)
     return country.name if country else ''
@@ -132,9 +135,10 @@ def find_key_in_nested_dict(data, key):
                 return result
     return None
 
-def get_print_id(order: dict):
+def get_print_id(order: dict, api: API):
+    """Return the print-id meta value for the given order."""
     for order_item in order['line_items']:
-        for meta in WOOCOMMERCE_API.get(f"products/{order_item['product_id']}").json()['meta_data']:
+        for meta in api.get(f"products/{order_item['product_id']}").json()['meta_data']:
             if meta['key'] == 'druck-id':
                 return meta['value']
     return None
@@ -151,22 +155,23 @@ def get_file_id(order: dict):
     return None
     
 
-def get_cut_file(order: dict):
-    print_id = get_print_id(order)
+def get_cut_file(order: dict, api: API):
+    """Find the matching cut file for an order."""
+    print_id = get_print_id(order, api)
     for file in os.listdir('cuts'):
         if print_id == file:
             return f'cuts/{file}'
     return None
 
 
-def start_printing(order: dict, label_settings: dict, hotfolder_path: str) -> None:
+def start_printing(api: API, order: dict, label_settings: dict, hotfolder_path: str) -> None:
     file_id = get_file_id(order)
     for file in os.listdir('temp'):
         if f'{file_id}.pdf' == file:
             file_path = f'temp/{file}'
             file_output_path = f'temp/label_{file}'
             add_label_to_pdf(file_path, file_output_path, order, label_settings)
-            cut_file = get_cut_file(order)
+            cut_file = get_cut_file(order, api)
             
             if not cut_file:
                 raise Exception('Cut file not found')
@@ -264,7 +269,7 @@ def get_order(order: dict):
     return None
 
 
-def order_check(woocommerce_api: str, label_settings: str, hotfolder_path: str, url: str) -> None:
+def order_check(woocommerce_api: API, label_settings: dict, hotfolder_path: str, url: str) -> None:
     for order in woocommerce_api.get('orders').json():
         if get_order_status(order) == False:
             error_attemps = 0
@@ -272,7 +277,7 @@ def order_check(woocommerce_api: str, label_settings: str, hotfolder_path: str, 
                 try:
                     file_id = get_file_id(order)
                     download_pdf(f'{url}/design-editor/?pdf_download={file_id}', f'temp/{file_id}.pdf')
-                    start_printing(order, label_settings, hotfolder_path)
+                    start_printing(woocommerce_api, order, label_settings, hotfolder_path)
                     print(f'Order({order["id"]}) completed')
                     break
                 except Exception as error:
@@ -373,7 +378,7 @@ if __name__ == '__main__':
         'sender_country': SENDER_COUNTRY
     }
 
-    WOOCOMMERCE_API = API(
+    api = API(
         url=URL,
         consumer_key=CONSUMER_KEY,
         consumer_secret=CONSUMER_SECRET,
@@ -382,7 +387,7 @@ if __name__ == '__main__':
 
     HOTFOLDER_PATH = os.getenv('HOTFOLDER_PATH')
     processor = OrderProcessor(
-        WOOCOMMERCE_API,
+        api,
         LABEL_SETTINGS,
         HOTFOLDER_PATH,
         URL,
