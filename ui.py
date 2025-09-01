@@ -12,7 +12,7 @@ def start_processing():
     import os
     from dotenv import load_dotenv
     from woocommerce import API
-    import run
+    from run import OrderProcessor
 
     load_dotenv(override=True)
 
@@ -20,8 +20,6 @@ def start_processing():
     consumer_key = os.getenv('CONSUMER_KEY')
     consumer_secret = os.getenv('CONSUMER_SECRET')
     hotfolder_path = os.getenv('HOTFOLDER_PATH')
-    run.DB_NAME = os.getenv('DB_NAME')
-    run.create_db(run.DB_NAME)
 
     label_settings = {
         'text_font_path': os.getenv('TEXT_FONT_PATH'),
@@ -43,7 +41,7 @@ def start_processing():
         version='wc/v3'
     )
 
-    processor = run.OrderProcessor(
+    processor = OrderProcessor(
         api,
         label_settings,
         hotfolder_path,
