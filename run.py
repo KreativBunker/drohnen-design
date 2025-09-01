@@ -5,7 +5,6 @@ import time
 import sqlite3
 import requests
 import traceback
-import threading
 
 import fitz
 import pycountry
@@ -288,37 +287,6 @@ def order_check(woocommerce_api: str, label_settings: str, hotfolder_path: str, 
                     break
 
 
-def process_orders(stop_event: threading.Event, api: API, label_settings: dict, hotfolder: str, url: str) -> None:
-    while not stop_event.is_set():
-        order_check(api, label_settings, hotfolder, url)
-        stop_event.wait(5)
-
-
-class OrderProcessor:
-    def __init__(self, api: API, label_settings: dict, hotfolder: str, url: str) -> None:
-        self.api = api
-        self.label_settings = label_settings
-        self.hotfolder = hotfolder
-        self.url = url
-        self.stop_event = threading.Event()
-        self.thread: threading.Thread | None = None
-
-    def start(self) -> None:
-        if self.thread and self.thread.is_alive():
-            return
-        self.stop_event.clear()
-        self.thread = threading.Thread(
-            target=process_orders,
-            args=(self.stop_event, self.api, self.label_settings, self.hotfolder, self.url),
-        )
-        self.thread.start()
-
-    def stop(self) -> None:
-        if self.thread:
-            self.stop_event.set()
-            self.thread.join()
-
-
 if __name__ == '__main__':
     load_dotenv(override=True)
     
@@ -360,13 +328,18 @@ if __name__ == '__main__':
         consumer_secret=CONSUMER_SECRET,
         version='wc/v3'
     )
-
+    
     HOTFOLDER_PATH = os.getenv('HOTFOLDER_PATH')
-    processor = OrderProcessor(
-        WOOCOMMERCE_API,
-        LABEL_SETTINGS,
-        HOTFOLDER_PATH,
-        URL,
-    )
-    processor.start()
-    processor.thread.join()
+    
+    while True:
+        try:
+            order_check(
+                WOOCOMMERCE_API,
+                LABEL_SETTINGS,
+                HOTFOLDER_PATH,
+                URL
+            )
+        except Exception as error:
+            print(error)
+
+        time.sleep(5)
