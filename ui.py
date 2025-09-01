@@ -2,7 +2,6 @@ import tkinter as tk
 
 
 processor = None
-status_label: tk.Label | None = None
 
 
 def start_processing():
@@ -41,16 +40,9 @@ def start_processing():
         version='wc/v3'
     )
 
-    processor = OrderProcessor(
-        api,
-        label_settings,
-        hotfolder_path,
-        url,
-        lambda msg: status_label.after(0, lambda: status_label.config(text=msg)),
-    )
+    processor = OrderProcessor(api, label_settings, hotfolder_path, url)
     processor.start()
 
-    status_label.config(text='Läuft')
     start_button.config(state=tk.DISABLED)
     stop_button.config(state=tk.NORMAL)
 
@@ -60,7 +52,6 @@ def stop_processing():
     global processor
     if processor:
         processor.stop()
-    status_label.config(text='Gestoppt')
     start_button.config(state=tk.NORMAL)
     stop_button.config(state=tk.DISABLED)
 
@@ -73,8 +64,5 @@ start_button.pack(padx=10, pady=5)
 
 stop_button = tk.Button(root, text='Stop', state=tk.DISABLED, command=stop_processing)
 stop_button.pack(padx=10, pady=5)
-
-status_label = tk.Label(root, text='Gestoppt')
-status_label.pack(padx=10, pady=5)
 
 root.mainloop()
