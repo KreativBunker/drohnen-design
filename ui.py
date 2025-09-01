@@ -47,13 +47,13 @@ def start_processing():
     stop_button.config(state=tk.NORMAL)
 
 
-def stop():
+def stop_processing():
     """Stop the order processing thread and reset button states."""
     global processor
     if processor:
         processor.stop()
-    stop_button.config(state=tk.DISABLED)
     start_button.config(state=tk.NORMAL)
+    stop_button.config(state=tk.DISABLED)
 
 
 root = tk.Tk()
@@ -62,7 +62,7 @@ root.title('Drohnen Design')
 start_button = tk.Button(root, text='Start', command=start_processing)
 start_button.pack(padx=10, pady=5)
 
-stop_button = tk.Button(root, text='Stop', state=tk.DISABLED, command=stop)
+stop_button = tk.Button(root, text='Stop', state=tk.DISABLED, command=stop_processing)
 stop_button.pack(padx=10, pady=5)
 
 root.mainloop()
