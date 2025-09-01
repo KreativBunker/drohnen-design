@@ -6,6 +6,7 @@ import sqlite3
 import requests
 import traceback
 import threading
+from typing import Callable
 
 import fitz
 import pycountry
@@ -295,22 +296,40 @@ def process_orders(stop_event: threading.Event, api: API, label_settings: dict, 
 
 
 class OrderProcessor:
-    def __init__(self, api: API, label_settings: dict, hotfolder: str, url: str) -> None:
+    def __init__(
+        self,
+        api: API,
+        label_settings: dict,
+        hotfolder: str,
+        url: str,
+        status_callback: Callable[[str], None] | None = None,
+    ) -> None:
         self.api = api
         self.label_settings = label_settings
         self.hotfolder = hotfolder
         self.url = url
+        self.status_callback = status_callback
         self.stop_event = threading.Event()
         self.thread: threading.Thread | None = None
+
+    def _run(self) -> None:
+        try:
+            process_orders(
+                self.stop_event,
+                self.api,
+                self.label_settings,
+                self.hotfolder,
+                self.url,
+            )
+        except Exception as e:  # pragma: no cover - runtime safeguard
+            if self.status_callback:
+                self.status_callback(f"Fehler: {e}")
 
     def start(self) -> None:
         if self.thread and self.thread.is_alive():
             return
         self.stop_event.clear()
-        self.thread = threading.Thread(
-            target=process_orders,
-            args=(self.stop_event, self.api, self.label_settings, self.hotfolder, self.url),
-        )
+        self.thread = threading.Thread(target=self._run)
         self.thread.start()
 
     def stop(self) -> None:
