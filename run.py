@@ -130,57 +130,48 @@ def find_key_in_nested_dict(data, key):
                 return result
     return None
 
-def get_print_id(order: dict):
-    for order_item in order['line_items']:
-        for meta in WOOCOMMERCE_API.get(f"products/{order_item['product_id']}").json()['meta_data']:
-            if meta['key'] == 'druck-id':
-                return meta['value']
+def get_print_id(order_item: dict):
+    for meta in WOOCOMMERCE_API.get(f"products/{order_item['product_id']}").json()['meta_data']:
+        if meta['key'] == 'druck-id':
+            return meta['value']
     return None
 
 
-def get_file_id(order: dict):
-    for order_item in order['line_items']:
-        if not order_item['meta_data']:
-            continue
-        for meta in order_item['meta_data']:
-            if 'file' in meta['value']:
-                file_id = str(meta['value']['file']).split('_')[0].split('/')[2]
-                return file_id
-    return None
-    
-
-def get_cut_file(order: dict):
-    print_id = get_print_id(order)
+def get_cut_file(order_item: dict):
+    print_id = get_print_id(order_item)
     for file in os.listdir('cuts'):
         if print_id == file:
             return f'cuts/{file}'
     return None
 
 
-def start_printing(order: dict, label_settings: dict, hotfolder_path: str) -> None:
-    file_id = get_file_id(order)
-    for file in os.listdir('temp'):
-        if f'{file_id}.pdf' == file:
-            file_path = f'temp/{file}'
-            file_output_path = f'temp/label_{file}'
-            add_label_to_pdf(file_path, file_output_path, order, label_settings)
-            cut_file = get_cut_file(order)
-            
-            if not cut_file:
-                raise Exception('Cut file not found')
-            
-            final_output = f'{hotfolder_path}/final_{file}'
-            merge_cut_file(file_output_path, cut_file, final_output)
-            
-            if get_order(order):
-                update_order(order, True)
-            else:
-                save_order(order, True)
-                
-            os.remove(file_path)
-            os.remove(file_output_path)
-                
-            break
+def download_image(url: str, output_file: str):
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        with open(output_file, "wb") as image_file:
+            for chunk in response.iter_content(1024):
+                image_file.write(chunk)
+
+
+def png_to_pdf(png_path: str, pdf_path: str):
+    image = Image.open(png_path)
+    rgb_image = image.convert('RGB')
+    rgb_image.save(pdf_path)
+
+
+def start_printing(order: dict, order_item: dict, pdf_path: str, label_settings: dict, hotfolder_path: str) -> None:
+    file_output_path = f"temp/label_{order['id']}_{order_item['id']}.pdf"
+    add_label_to_pdf(pdf_path, file_output_path, order, label_settings)
+    cut_file = get_cut_file(order_item)
+
+    if not cut_file:
+        raise Exception('Cut file not found')
+
+    final_output = f"{hotfolder_path}/final_{order['id']}_{order_item['id']}.pdf"
+    merge_cut_file(file_output_path, cut_file, final_output)
+
+    os.remove(pdf_path)
+    os.remove(file_output_path)
 
 
 def save_base64_to_png(base64_data, output_file):
@@ -193,24 +184,6 @@ def save_base64_to_png(base64_data, output_file):
             file.write(image_data)
     except Exception as e:
         print(f"Fehler beim Speichern von {output_file}: {e}")
-            
-
-def download_pdf(url: str, output_file: str):
-    response = requests.get(url, stream=True)
-
-    if response.status_code == 200:
-        with open(output_file, "wb") as pdf_file:
-            for chunk in response.iter_content(1024):
-                pdf_file.write(chunk)
-
-
-def get_pdf_size(file_path: str) -> list:
-    pdf_document = fitz.open(file_path)
-    for page_num in range(pdf_document.page_count):
-        page = pdf_document.load_page(page_num)
-        width = int(page.rect.width)
-        height = int(page.rect.height)
-    return [width, height]
 
 
 def create_db(db_name: str):
@@ -268,16 +241,25 @@ def order_check(woocommerce_api: str, label_settings: str, hotfolder_path: str, 
             error_attemps = 0
             while True:
                 try:
-                    file_id = get_file_id(order)
-                    download_pdf(f'{url}/design-editor/?pdf_download={file_id}', f'temp/{file_id}.pdf')
-                    start_printing(order, label_settings, hotfolder_path)
+                    for item in order['line_items']:
+                        png_url = f"{url}/wp-content/uploads/dv-print-designer/order-{order['id']}/item-{item['id']}.png"
+                        png_path = f"temp/{order['id']}_{item['id']}.png"
+                        pdf_path = f"temp/{order['id']}_{item['id']}.pdf"
+                        download_image(png_url, png_path)
+                        png_to_pdf(png_path, pdf_path)
+                        start_printing(order, item, pdf_path, label_settings, hotfolder_path)
+                        os.remove(png_path)
+                    if get_order(order):
+                        update_order(order, True)
+                    else:
+                        save_order(order, True)
                     print(f'Order({order["id"]}) completed')
                     break
                 except Exception as error:
                     print(f'Order({order["id"]}) failed to print, try again... ({traceback.format_exc()})')
                     error_attemps += 1
                     time.sleep(5)
-                
+
                 if error_attemps >= 3:
                     if not get_order(order):
                         save_order(order, -1)
