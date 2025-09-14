@@ -29,12 +29,30 @@ def add_label_to_pdf(input_file: str, output_file: str, order: dict, label_setti
     doc = fitz.open(input_file)
     out_doc = fitz.open()
 
-    font_path = label_settings['text_font_path']
-    font_bold_path = label_settings['text_bold_font_path']
+    def load_font(path: str | None, fallback: str) -> ImageFont.FreeTypeFont:
+        """Resolve and load the given font.
+
+        If ``path`` is not provided or the file cannot be loaded, a fallback
+        font bundled with the repository is used. ``fallback`` should be the
+        path to that bundled font relative to this file.
+        """
+
+        if not path:
+            path = fallback
+        if not os.path.isabs(path):
+            candidate = os.path.join(os.path.dirname(__file__), path)
+            if os.path.exists(candidate):
+                path = candidate
+        try:
+            return ImageFont.truetype(path, font_size)
+        except OSError:
+            fallback_path = os.path.join(os.path.dirname(__file__), fallback)
+            return ImageFont.truetype(fallback_path, font_size)
+
     font_size = int(label_settings['text_font_size']) * 3
 
-    font_normal = ImageFont.truetype(font_path, font_size)
-    font_bold = ImageFont.truetype(font_bold_path, font_size)
+    font_normal = load_font(label_settings.get('text_font_path'), os.path.join('fonts', 'roboto.ttf'))
+    font_bold = load_font(label_settings.get('text_bold_font_path'), os.path.join('fonts', 'Roboto-Bold.ttf'))
 
     country = get_country_name(order['shipping']['country'])
     
