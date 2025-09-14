@@ -151,6 +151,8 @@ def download_image(url: str, output_file: str):
         with open(output_file, "wb") as image_file:
             for chunk in response.iter_content(1024):
                 image_file.write(chunk)
+    else:
+        raise Exception(f"Failed to download image: {url}, status code {response.status_code}")
 
 
 def png_to_pdf(png_path: str, pdf_path: str):
