@@ -59,14 +59,16 @@ def test_order_check_skips_unpaid_orders(monkeypatch):
     monkeypatch.setattr('run.save_order', lambda order, status: None)
     monkeypatch.setattr('run.os.remove', lambda path: None)
 
-    def fake_start_printing(order, item, pdf_path, label_settings, hotfolder_path):
-        calls.append((order['id'], item['id']))
+    def fake_start_printing(
+        order, item, pdf_path, label_settings, hotfolder_path, copy_index=0
+    ):
+        calls.append((order['id'], item['id'], copy_index))
 
     monkeypatch.setattr('run.start_printing', fake_start_printing)
 
     order_check(api, {}, '', '')
 
-    assert calls == [(2, 20)]
+    assert calls == [(2, 20, 0)]
 
 
 def test_order_check_retries_and_succeeds(monkeypatch):
@@ -89,11 +91,49 @@ def test_order_check_retries_and_succeeds(monkeypatch):
 
     calls = []
 
-    def fake_start_printing(order, item, pdf_path, label_settings, hotfolder_path):
-        calls.append((order['id'], item['id']))
+    def fake_start_printing(
+        order, item, pdf_path, label_settings, hotfolder_path, copy_index=0
+    ):
+        calls.append((order['id'], item['id'], copy_index))
 
     monkeypatch.setattr('run.start_printing', fake_start_printing)
 
     order_check(api, {}, '', '')
 
-    assert calls == [(3, 30)]
+    assert calls == [(3, 30, 0)]
+
+
+def test_order_check_handles_multiple_quantity(monkeypatch):
+    orders = [
+        {
+            "id": 4,
+            "status": "processing",
+            "line_items": [{"id": 40, "quantity": 3}],
+        }
+    ]
+    api = FakeAPI(orders)
+
+    calls = []
+    monkeypatch.setattr('run.get_order_status', lambda order: False)
+    monkeypatch.setattr('run.download_image', lambda url, path: None)
+    monkeypatch.setattr('run.png_to_pdf', lambda png, pdf, dpi: None)
+    monkeypatch.setattr('run.get_print_dpi', lambda item: 150)
+    monkeypatch.setattr('run.get_order', lambda o: None)
+    monkeypatch.setattr('run.update_order', lambda order, status: None)
+    monkeypatch.setattr('run.save_order', lambda order, status: None)
+    monkeypatch.setattr('run.os.remove', lambda path: None)
+
+    def fake_start_printing(
+        order, item, pdf_path, label_settings, hotfolder_path, copy_index=0
+    ):
+        calls.append((order['id'], item['id'], copy_index))
+
+    monkeypatch.setattr('run.start_printing', fake_start_printing)
+
+    order_check(api, {}, '', '')
+
+    assert calls == [
+        (4, 40, 0),
+        (4, 40, 1),
+        (4, 40, 2),
+    ]

@@ -194,15 +194,25 @@ def png_to_pdf(png_path: str, pdf_path: str, dpi: int = 150):
     rgb_image.save(pdf_path, resolution=dpi)
 
 
-def start_printing(order: dict, order_item: dict, pdf_path: str, label_settings: dict, hotfolder_path: str) -> None:
-    file_output_path = f"temp/label_{order['id']}_{order_item['id']}.pdf"
+def start_printing(
+    order: dict,
+    order_item: dict,
+    pdf_path: str,
+    label_settings: dict,
+    hotfolder_path: str,
+    copy_index: int = 0,
+) -> None:
+    suffix = f"_{copy_index}" if copy_index else ""
+    file_output_path = f"temp/label_{order['id']}_{order_item['id']}{suffix}.pdf"
     add_label_to_pdf(pdf_path, file_output_path, order, label_settings)
     cut_file = get_cut_file(order_item)
 
     if not cut_file:
         raise Exception('Cut file not found')
 
-    final_output = f"{hotfolder_path}/final_{order['id']}_{order_item['id']}.pdf"
+    final_output = (
+        f"{hotfolder_path}/final_{order['id']}_{order_item['id']}{suffix}.pdf"
+    )
     merge_cut_file(file_output_path, cut_file, final_output)
 
     os.remove(pdf_path)
@@ -293,14 +303,26 @@ def order_check(woocommerce_api: API, label_settings: dict, hotfolder_path: str,
             while True:
                 try:
                     for item in order['line_items']:
-                        png_url = f"{url}/Order/order-{order['id']}/item-{item['id']}.png"
-                        png_path = f"temp/{order['id']}_{item['id']}.png"
-                        pdf_path = f"temp/{order['id']}_{item['id']}.pdf"
-                        download_image(png_url, png_path)
-                        dpi = get_print_dpi(item)
-                        png_to_pdf(png_path, pdf_path, dpi)
-                        start_printing(order, item, pdf_path, label_settings, hotfolder_path)
-                        os.remove(png_path)
+                        copies = item.get('quantity', 1)
+                        for copy_index in range(copies):
+                            suffix = f"_{copy_index}" if copies > 1 else ""
+                            png_url = (
+                                f"{url}/Order/order-{order['id']}/item-{item['id']}.png"
+                            )
+                            png_path = f"temp/{order['id']}_{item['id']}{suffix}.png"
+                            pdf_path = f"temp/{order['id']}_{item['id']}{suffix}.pdf"
+                            download_image(png_url, png_path)
+                            dpi = get_print_dpi(item)
+                            png_to_pdf(png_path, pdf_path, dpi)
+                            start_printing(
+                                order,
+                                item,
+                                pdf_path,
+                                label_settings,
+                                hotfolder_path,
+                                copy_index if copies > 1 else 0,
+                            )
+                            os.remove(png_path)
                     if get_order(order):
                         update_order(order, True)
                     else:
