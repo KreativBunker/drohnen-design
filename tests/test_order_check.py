@@ -39,7 +39,8 @@ def test_order_check_skips_unpaid_orders(monkeypatch):
     calls = []
     monkeypatch.setattr('run.get_order_status', lambda order: False)
     monkeypatch.setattr('run.download_image', lambda url, path: None)
-    monkeypatch.setattr('run.png_to_pdf', lambda png, pdf: None)
+    monkeypatch.setattr('run.png_to_pdf', lambda png, pdf, dpi: None)
+    monkeypatch.setattr('run.get_print_dpi', lambda item: 150)
     monkeypatch.setattr('run.get_order', lambda o: None)
     monkeypatch.setattr('run.update_order', lambda order, status: None)
     monkeypatch.setattr('run.save_order', lambda order, status: None)
