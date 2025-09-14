@@ -13,6 +13,10 @@ from dotenv import load_dotenv
 from woocommerce import API
 
 
+# Cache for WooCommerce product data to avoid repeated API requests
+PRODUCT_CACHE: dict[int, dict] = {}
+
+
 def get_country_name(code):
     country = pycountry.countries.get(alpha_2=code)
     return country.name if country else ''
@@ -148,8 +152,18 @@ def find_key_in_nested_dict(data, key):
                 return result
     return None
 
+def _get_product(product_id: int) -> dict:
+    """Retrieve product data using a simple cache."""
+    product = PRODUCT_CACHE.get(product_id)
+    if product is None:
+        product = WOOCOMMERCE_API.get(f"products/{product_id}").json()
+        PRODUCT_CACHE[product_id] = product
+    return product
+
+
 def get_print_id(order_item: dict):
-    for meta in WOOCOMMERCE_API.get(f"products/{order_item['product_id']}").json()['meta_data']:
+    product = _get_product(order_item['product_id'])
+    for meta in product.get('meta_data', []):
         if meta['key'] == 'druck-id':
             return meta['value']
     return None
@@ -164,7 +178,7 @@ def get_cut_file(order_item: dict):
 
 
 def get_print_dpi(order_item: dict, default: int = 150) -> int:
-    product = WOOCOMMERCE_API.get(f"products/{order_item['product_id']}").json()
+    product = _get_product(order_item['product_id'])
     for meta in product.get('meta_data', []):
         if meta['key'] == '_dvpd_dpi':
             try:
