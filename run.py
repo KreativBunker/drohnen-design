@@ -174,14 +174,18 @@ def get_print_dpi(order_item: dict, default: int = 150) -> int:
     return default
 
 
-def download_image(url: str, output_file: str):
-    response = requests.get(url, stream=True)
-    if response.status_code == 200:
-        with open(output_file, "wb") as image_file:
-            for chunk in response.iter_content(1024):
-                image_file.write(chunk)
-    else:
-        raise Exception(f"Failed to download image: {url}, status code {response.status_code}")
+def download_image(url: str, output_file: str, retries: int = 5, delay: float = 2.0):
+    last_status = None
+    for _ in range(retries):
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            with open(output_file, "wb") as image_file:
+                for chunk in response.iter_content(1024):
+                    image_file.write(chunk)
+            return
+        last_status = response.status_code
+        time.sleep(delay)
+    raise Exception(f"Failed to download image: {url}, status code {last_status}")
 
 
 def png_to_pdf(png_path: str, pdf_path: str, dpi: int = 150):
