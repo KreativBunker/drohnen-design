@@ -260,6 +260,9 @@ def order_check(woocommerce_api: API, label_settings: dict, hotfolder_path: str,
     if not isinstance(orders_response, list):
         raise ValueError(f"Unexpected response from WooCommerce API: {orders_response}")
     for order in orders_response:
+        # Skip orders that have not been paid yet
+        if order.get('status') not in {"processing", "completed"}:
+            continue
         if get_order_status(order) == False:
             error_attemps = 0
             while True:
