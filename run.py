@@ -244,7 +244,7 @@ def order_check(woocommerce_api: str, label_settings: str, hotfolder_path: str, 
             while True:
                 try:
                     for item in order['line_items']:
-                        png_url = f"{url}/wp-content/uploads/dv-print-designer/order-{order['id']}/item-{item['id']}.png"
+                        png_url = f"{url}/Order/order-{order['id']}/item-{item['id']}.png"
                         png_path = f"temp/{order['id']}_{item['id']}.png"
                         pdf_path = f"temp/{order['id']}_{item['id']}.pdf"
                         download_image(png_url, png_path)
