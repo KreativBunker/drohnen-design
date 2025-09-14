@@ -271,8 +271,18 @@ def get_order(order: dict):
 
 
 def order_check(woocommerce_api: API, label_settings: dict, hotfolder_path: str, url: str) -> None:
-    orders_response = woocommerce_api.get('orders').json()
-    if not isinstance(orders_response, list):
+    attempts = 3
+    orders_response = None
+    for _ in range(attempts):
+        orders_response = woocommerce_api.get('orders').json()
+        if isinstance(orders_response, list):
+            break
+        print(
+            f"Unexpected response from WooCommerce API: {orders_response},"
+            " retrying...",
+        )
+        time.sleep(5)
+    else:
         raise ValueError(f"Unexpected response from WooCommerce API: {orders_response}")
     for order in orders_response:
         # Skip orders that have not been paid yet
