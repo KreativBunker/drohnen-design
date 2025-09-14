@@ -163,6 +163,17 @@ def get_cut_file(order_item: dict):
     return None
 
 
+def get_print_dpi(order_item: dict, default: int = 150) -> int:
+    product = WOOCOMMERCE_API.get(f"products/{order_item['product_id']}").json()
+    for meta in product.get('meta_data', []):
+        if meta['key'] == '_dvpd_dpi':
+            try:
+                return int(meta['value'])
+            except (TypeError, ValueError):
+                break
+    return default
+
+
 def download_image(url: str, output_file: str):
     response = requests.get(url, stream=True)
     if response.status_code == 200:
@@ -173,10 +184,10 @@ def download_image(url: str, output_file: str):
         raise Exception(f"Failed to download image: {url}, status code {response.status_code}")
 
 
-def png_to_pdf(png_path: str, pdf_path: str):
+def png_to_pdf(png_path: str, pdf_path: str, dpi: int = 150):
     image = Image.open(png_path)
     rgb_image = image.convert('RGB')
-    rgb_image.save(pdf_path)
+    rgb_image.save(pdf_path, resolution=dpi)
 
 
 def start_printing(order: dict, order_item: dict, pdf_path: str, label_settings: dict, hotfolder_path: str) -> None:
@@ -272,7 +283,8 @@ def order_check(woocommerce_api: API, label_settings: dict, hotfolder_path: str,
                         png_path = f"temp/{order['id']}_{item['id']}.png"
                         pdf_path = f"temp/{order['id']}_{item['id']}.pdf"
                         download_image(png_url, png_path)
-                        png_to_pdf(png_path, pdf_path)
+                        dpi = get_print_dpi(item)
+                        png_to_pdf(png_path, pdf_path, dpi)
                         start_printing(order, item, pdf_path, label_settings, hotfolder_path)
                         os.remove(png_path)
                     if get_order(order):
