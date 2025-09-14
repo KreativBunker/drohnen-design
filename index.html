@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Bestellungen</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+    .controls { margin-bottom: 20px; display: flex; align-items: center; gap: 15px; }
+    .status-indicator { font-weight: bold; padding: 6px 12px; border-radius: 6px; }
+    .active { background: #dcfce7; color: #16a34a; }
+    .paused { background: #fee2e2; color: #ef4444; }
+    button { padding: 10px 15px; margin-right: 10px; border: none; border-radius: 6px; cursor: pointer; }
+    .start { background: #16a34a; color: #fff; }
+    .stop { background: #ef4444; color: #fff; }
+    table { width: 100%; border-collapse: collapse; background: #fff; margin-bottom: 30px; }
+    th, td { padding: 12px 15px; border-bottom: 1px solid #ddd; text-align: left; }
+    th { background: #f0f0f0; }
+    .reprint { background: #0ea5e9; color: #fff; padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; }
+    .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+
+    /* Status Farben */
+    .status-error { color: #ef4444; font-weight: bold; }
+    .status-success { color: #16a34a; font-weight: bold; }
+    .status-progress { color: #f59e0b; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="controls">
+      <button class="start">Start</button>
+      <button class="stop">Stop</button>
+      <span class="status-indicator active">Aktiv</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>ID</th>
+          <th>Bestellung</th>
+          <th>Datum / Uhrzeit</th>
+          <th>Besteller</th>
+          <th>Aktion</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="status-error">Fehler</td>
+          <td>1002</td>
+          <td>B-1002</td>
+          <td>14.09.2025 11:15</td>
+          <td>Beispiel AG, Erika Musterfrau</td>
+          <td><button class="reprint">Neu drucken</button></td>
+        </tr>
+        <tr>
+          <td class="status-success">Abgeschlossen</td>
+          <td>1003</td>
+          <td>B-1003</td>
+          <td>14.09.2025 12:01</td>
+          <td>Testfirma KG, Hans Beispiel</td>
+          <td><button class="reprint">Neu drucken</button></td>
+        </tr>
+        <tr>
+          <td class="status-progress">In Arbeit</td>
+          <td>1004</td>
+          <td>B-1004</td>
+          <td>14.09.2025 12:45</td>
+          <td>Mustermann OHG, Petra Müller</td>
+          <td><button class="reprint">Neu drucken</button></td>
+        </tr>
+        <tr>
+          <td class="status-error">Fehler</td>
+          <td>1005</td>
+          <td>B-1005</td>
+          <td>14.09.2025 13:10</td>
+          <td>Test AG, Johann Becker</td>
+          <td><button class="reprint">Neu drucken</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
