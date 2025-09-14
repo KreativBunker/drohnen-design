@@ -255,8 +255,11 @@ def get_order(order: dict):
     return None
 
 
-def order_check(woocommerce_api: str, label_settings: str, hotfolder_path: str, url: str) -> None:
-    for order in woocommerce_api.get('orders').json():
+def order_check(woocommerce_api: API, label_settings: dict, hotfolder_path: str, url: str) -> None:
+    orders_response = woocommerce_api.get('orders').json()
+    if not isinstance(orders_response, list):
+        raise ValueError(f"Unexpected response from WooCommerce API: {orders_response}")
+    for order in orders_response:
         if get_order_status(order) == False:
             error_attemps = 0
             while True:
